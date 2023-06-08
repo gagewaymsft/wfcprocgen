@@ -1,7 +1,11 @@
 using UnityEngine;
 
-public class TileChunk
+public class TileMap : MonoBehaviour
 {
+    public TileMap()
+    {
+    }
+
     private void Start()
     {
 
