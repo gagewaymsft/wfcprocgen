@@ -4,7 +4,9 @@ it's not very good and needs abstracted out.
 
 ## Goals
 - [x] implement basic wfc
-- [x] (kind of done) generate new tilemaps from existing tilemaps
+- [x] (kind of done) generate new tilemaps from existing tilemaps - this is broken but the concept is there
+- [ ] use bounding box to march the edge of a tilemap to generate a new tilemap that has edge matching so the transitions are seamless
+- [ ] refactor this shit so it's not one big dumb file with no real structure
 - [ ] generate new tilemaps in a boundary box around the camera (infinite generation)
 - [ ] store generated tilemaps in some sort of data structure
 - [ ] frustum culling to remove tilemaps that are too far away to see
