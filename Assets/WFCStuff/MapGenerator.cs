@@ -7,7 +7,8 @@ using UnityEditor;
 using UnityEngine;
 using Diag = System.Diagnostics;
 
-[ExecuteAlways]
+// this is probably not a good idea, but it's the only way I can get the tilemaps to generate in the editor
+[ExecuteInEditMode]
 public class MapGenerator : MonoBehaviour
 {
     public bool stopGenerating = false;
@@ -38,10 +39,9 @@ public class MapGenerator : MonoBehaviour
     public double timespan;
     public int maxTileMapsCount;
 
-    // VARIABLES FOR INIT SPIRAL TILEMAP GENERATION
     public int x, y = -10;
     public int step = 1;
-    public int stepSize = 0; // set to reference tilemap width
+    public int stepSize = 0;
     public int numSteps = 1;
     public int state = 0;
     public int turnCounter = 1;
@@ -109,7 +109,7 @@ public class MapGenerator : MonoBehaviour
 
     internal void GenerateTilemaps()
     {
-        List<GameObject> tileMaps = CheckTileMaps();
+        List<GameObject> tileMaps = GetOrInitTilemaps();
 
         if (tileMaps.Count < maxTileMapsCount)
         {
@@ -127,7 +127,7 @@ public class MapGenerator : MonoBehaviour
             }
             hasStarted = true;
             stepSize = referenceTileMapWidth;
-            CreateSpiralTileMapStartingPlot(lastTileMapCreated);
+            CreateSpiralTileMapStartingPlot();
         }
         else
         {
@@ -135,67 +135,17 @@ public class MapGenerator : MonoBehaviour
         }
     }
 
-    //private void FreshStart()
-    //{
-    //    referenceTileMap = GameObject.FindGameObjectWithTag("ReferenceTileMap");
-    //    referenceTileMap.GetComponent<TilePainter>().palette = null;
-    //    referenceTileMapWidth = referenceTileMap.GetComponent<TilePainter>().width;
-    //    referenceTileMapDepth = referenceTileMap.GetComponent<TilePainter>().height;
-    //    referenceTileMapGridSize = referenceTileMap.GetComponent<TilePainter>().gridsize;
-    //    referenceTileMapPositionX = referenceTileMap.GetComponent<TilePainter>().transform.position.x;
-    //    referenceTileMapPositionY = referenceTileMap.GetComponent<TilePainter>().transform.position.y;
-
-
-    //    GameObject tileField = referenceTileMap.transform.Find("tiles").gameObject;
-
-    //    foreach (Transform child in tileField.transform)
-    //    {
-    //        tilesToTrainFrom.Add(child.gameObject);
-    //    }
-
-    //    CreateFirstTileMap();
-    //}
 
     private void Update()
     {
-
-        if (stopGenerating is false)
-        {
-            if (!hasCreatedAnyTileMaps)
-            {
-                Initialize();
-            }
-            if (!hasStarted)
-            {
-                GenerateTilemaps();
-            }
-
-            timespan = stopwatch?.Elapsed.TotalMilliseconds ?? 0;
-            //List<GameObject> tileMaps = CheckTileMaps();
-
-            //if (ShouldDestroyTiles(tileMaps))
-            //{
-            //    DestroyTileField(tileMaps[0]);
-            //    GameObject tileField = CreateNewTileField(tileMaps[0]);
-            //    ReparentTiles(tileField);
-            //    DestroyTaggedObject("TILESTOCOPY");
-            //    hasDestroyed = true;
-            //}
-        }
     }
 
-    private IEnumerator Wait(bool isPaused)
-    {
-        yield return new WaitForSeconds(0.5f);
-
-    }
-
-    private List<GameObject> CheckTileMaps()
+    private List<GameObject> GetOrInitTilemaps()
     {
         return tileMaps ?? new List<GameObject>();
     }
 
-    private void CreateSpiralTileMapStartingPlot(GameObject lastTileMap)
+    private void CreateSpiralTileMapStartingPlot()
     {
         if (tileMaps.Count == maxTileMapsCount)
         {
@@ -203,7 +153,7 @@ public class MapGenerator : MonoBehaviour
         }
         var tileMapToCreate = tileMapGenerator.GenerateTileMap();
         tileMapToCreate.transform.parent = transform;
-        Vector3 nextLocation = GetNextTileMapPosition(lastTileMap.transform);
+        Vector3 nextLocation = GetNextTileMapPosition();
         tileMapToCreate.transform.position = nextLocation;
 
         tileMapToCreate = DoTileShit(tileMapToCreate);
@@ -212,13 +162,14 @@ public class MapGenerator : MonoBehaviour
         tileMaps.Add(tileMapToCreate);
         lastTileMapCreated = tileMapToCreate;
         hasCreatedAnyTileMaps = true;
-        // recursively call this method to create the next tilemap
-        CreateSpiralTileMapStartingPlot(tileMapToCreate);
+
+        CreateSpiralTileMapStartingPlot();
     }
 
+    // awesome name i know, will abstract this later
     public GameObject DoTileShit(GameObject tileMapToCreate)
     {
-        GameObject tileField = new GameObject("tiles");
+        GameObject tileField = new("tiles");
         tileField.transform.parent = tileMapToCreate.transform;
         tileField.transform.position = tileMapToCreate.transform.position;
 
@@ -244,9 +195,7 @@ public class MapGenerator : MonoBehaviour
         tileFieldTraining.Compile();
 
 
-        GameObject output = tileMapToCreate.transform.Find("output") == null
-            ? Utils.GenerateGameObject("output")
-            : tileMapToCreate.transform.Find("output").gameObject;
+        GameObject output = tileMapToCreate.transform.Find("output").gameObject ?? Utils.GenerateGameObject("output");
 
         // stupid hack
         output.tag = "TILESTOCOPY";
@@ -266,8 +215,11 @@ public class MapGenerator : MonoBehaviour
         return tileMapToCreate;
     }
 
-    public Vector3 GetNextTileMapPosition(Transform lastTilemapLocation)
+    public Vector3 GetNextTileMapPosition()
     {
+        // this does it in a spiral starting from center
+        // this is no longer how i think this should be done
+        // but oh well
         switch (state)
         {
             case 0:
@@ -297,216 +249,12 @@ public class MapGenerator : MonoBehaviour
         return new Vector3(x, y, 0);
     }
 
-    private void CreateNorthTileMap()
-    {
-        var tileMapToCreate = tileMapGenerator.GenerateTileMap();
-        tileMapToCreate.transform.parent = transform;
-
-        Debug.Log("Creating North Tile Map");
-
-        // get last created tilemap
-        var lastTileMap = lastTileMapCreated;
-        // get the last tilemap position
-        var lastTileMapPosition = lastTileMap.transform.position;
-        // get the reference tilemap width
-        var tilemapwidth = referenceTileMapWidth;
-        // get the reference tilemap depth
-        var tilemapdepth = referenceTileMapDepth;
-        // get the reference tilemap gridsize
-        var tilemapgridsize = gridSize > 0 ? gridSize : referenceTileMapGridSize > 0 ? referenceTileMapGridSize : 1;
-
-        // figure out how to position the new tilemap
-
-        // going clockwise
-
-        // get last tilemap direction
-
-        //Transform nextLocation = GetNextTileMapPosition(lastTileMap.transform, 09);
-        ;
-
-
-
-
-        // get all the tiles on the last created tilemap
-
-
-
-        // feed the tiles into the wfc algorithm
-
-
-
-        // get the output tiles from the wfc algorithm
-
-
-
-        // append the output tiles to the new tilemap
-
-
-
-        // add tilemap to list
-        tileMaps.Add(tileMapToCreate);
-        //set last tilemap created to this one
-        lastTileMapCreated = tileMapToCreate;
-    }
-
-    private void CreateEastTileMap()
-    {
-        var tileMapToCreate = tileMapGenerator.GenerateTileMap();
-        // parent the new tilemap to self
-        tileMapToCreate.transform.parent = transform;
-
-        Debug.Log("Creating East Tile Map");
-
-        tileMaps.Add(tileMapToCreate);
-        lastTileMapCreated = tileMapToCreate;
-    }
-
-    private void CreateSouthTileMap()
-    {
-        var tileMapToCreate = tileMapGenerator.GenerateTileMap();
-        tileMapToCreate.transform.parent = transform;
-
-        Debug.Log("Creating South Tile Map");
-
-        tileMaps.Add(tileMapToCreate);
-        lastTileMapCreated = tileMapToCreate;
-    }
-
-    private void CreateWestTileMap()
-    {
-        var tileMapToCreate = tileMapGenerator.GenerateTileMap();
-        tileMapToCreate.transform.parent = transform;
-
-        Debug.Log("Creating West Tile Map");
-
-        tileMaps.Add(tileMapToCreate);
-        lastTileMapCreated = tileMapToCreate;
-    }
-
-    private bool ShouldDestroyTiles(List<GameObject> tileMaps)
-    {
-        return tileMaps.Count > 0 && GetGeneratedMapOutput().Count > 0 && !hasDestroyed;
-    }
-
-    private void DestroyTileField(GameObject tileMap)
-    {
-        GameObject tileField = tileMap.transform.Find("tiles").gameObject;
-        DestroyImmediate(tileField);
-    }
-
-    private GameObject CreateNewTileField(GameObject parentTileMap)
-    {
-        GameObject tileField = new GameObject("tiles");
-        tileField.transform.parent = parentTileMap.transform;
-        return tileField;
-    }
-
-    private void ReparentTiles(GameObject newParent)
-    {
-        List<GameObject> tiles = GetGeneratedMapOutput();
-
-        foreach (GameObject tile in tiles)
-        {
-            ReparentAndPositionTile(tile, newParent);
-        }
-    }
-
-    private void ReparentAndPositionTile(GameObject tile, GameObject newParent)
-    {
-        tile.transform.parent = newParent.transform;
-        tile.transform.position = new Vector3(tile.transform.position.x - chunkWidth, tile.transform.position.y, 0);
-    }
-
     private void DestroyTaggedObject(string tag)
     {
         GameObject objectToDestroy = GameObject.FindGameObjectWithTag(tag);
         DestroyImmediate(objectToDestroy);
     }
 
-
-
-    // this is a clusterfuck, but it works for at least the first tilemap
-    // need to abstract this out into individual classes and stop relying on "GameObject" for everything
-    private void CreateFirstTileMap()
-    {
-        GameObject tileMapToCreate = tileMapGenerator.GenerateTileMap();
-        tileMapToCreate.transform.hierarchyCapacity = 10000;
-        tileMapToCreate.transform.parent = transform;
-        tileMapToCreate.transform.position = new Vector3(referenceTileMapPositionX, referenceTileMapPositionX + chunkWidth, 0);
-        GameObject tileField = new GameObject("tiles");
-        tileField.transform.parent = tileMapToCreate.transform;
-        tileField.transform.position = new Vector3(referenceTileMapPositionX, referenceTileMapPositionX + chunkWidth, 0);
-
-        foreach (GameObject tile in tilesToTrainFrom)
-        {
-            GameObject newTile = Instantiate(tile);
-            newTile.transform.parent = tileField.transform;
-            newTile.transform.position = new Vector3(tile.transform.position.x, tile.transform.position.y + chunkWidth, 0);
-        }
-
-        tileField.AddComponent<Training>();
-        var tileFieldTraining = tileField.GetComponent<Training>();
-        tileFieldTraining.gridsize = referenceTileMapGridSize;
-        tileFieldTraining.width = referenceTileMapWidth;
-        tileFieldTraining.depth = referenceTileMapDepth;
-
-        var referenceTiles = referenceTileMap.transform.Find("tiles").gameObject;
-        var referenceTraining = referenceTiles.GetComponent<Training>();
-
-        tileFieldTraining.tiles = referenceTraining.tiles;
-        tileFieldTraining.RS = referenceTraining.RS;
-
-        tileFieldTraining.Compile();
-
-        GameObject output = tileMapToCreate.transform.Find("output") == null
-            ? Utils.GenerateGameObject("output")
-            : tileMapToCreate.transform.Find("output").gameObject;
-
-        // stupid hack
-        output.tag = "TILESTOCOPY";
-
-        output.transform.parent = tileMapToCreate.transform;
-        output.transform.position = new Vector3(referenceTileMapPositionX + chunkWidth, referenceTileMapPositionX + chunkWidth, 0);
-        output.transform.hierarchyCapacity = 10000;
-        output.AddComponent<OverlapWFC>();
-        var overlapWFC = output.GetComponent<OverlapWFC>();
-        overlapWFC.gridsize = referenceTileMapGridSize;
-        overlapWFC.width = referenceTileMapWidth + 2;
-        overlapWFC.depth = referenceTileMapDepth + 2;
-        overlapWFC.training = tileFieldTraining;
-        overlapWFC.N = 3;
-        overlapWFC.incremental = true;
-        overlapWFC.Generate();
-
-        if (!hasCreatedAnyTileMaps)
-        {
-            hasCreatedAnyTileMaps = true;
-            lastTileMapCreated = tileMapToCreate;
-        }
-
-        tileMaps.Add(tileMapToCreate);
-    }
-
-
-    internal List<GameObject> GetGeneratedMapOutput()
-    {
-        // stupid hack 2.0
-        List<GameObject> output = GameObject.FindGameObjectsWithTag("TILESTOCOPY").ToList();
-        if (output.Count > 0)
-        {
-            var outputOverlap = output[0].GetComponent<OverlapWFC>();
-            var outputGroup = outputOverlap.group.gameObject;
-            List<GameObject> outputTiles = new List<GameObject>();
-            foreach (Transform child in outputGroup.transform)
-            {
-                outputTiles.Add(child.gameObject);
-            }
-
-            return outputTiles;
-        }
-
-        return new List<GameObject>();
-    }
 }
 
 [CustomEditor(typeof(MapGenerator))]
