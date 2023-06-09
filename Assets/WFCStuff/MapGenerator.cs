@@ -147,7 +147,7 @@ public class MapGenerator : MonoBehaviour
         {
             return;
         }
-        var tileMapToCreate = tileMapGenerator.GenerateTileMap();
+        var tileMapToCreate = tileMapGenerator.GenerateTile();
         tileMapToCreate.transform.parent = transform;
         Vector3 nextLocation = GetNextTileMapPosition();
         tileMapToCreate.transform.position = nextLocation;
@@ -191,7 +191,7 @@ public class MapGenerator : MonoBehaviour
         tileFieldTraining.Compile();
 
 
-        GameObject output = tileMapToCreate.transform.Find("output").gameObject ?? Utils.GenerateGameObject("output");
+        GameObject output = tileMapToCreate.transform.Find("output").gameObject != null ? tileMapToCreate.transform.Find("output").gameObject : Utils.GenerateGameObject("output");
 
         // stupid hack
         output.tag = "TILESTOCOPY";

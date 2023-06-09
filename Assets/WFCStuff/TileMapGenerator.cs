@@ -1,15 +1,40 @@
-using UnityEditor.ShaderGraph.Internal;
 using UnityEngine;
-using UnityEngine.Diagnostics;
+using UnityEngine.Tilemaps;
 
-public class TileMapGenerator
+[ExecuteInEditMode]
+public class TileMapGenerator : MonoBehaviour
 {
+    public int MaxIterations = 1000;
 
-    public GameObject GenerateTileMap()
+    GameObject grid;
+    Grid gridComponent;
+
+    GameObject groundMap;
+    TilemapRenderer groundMapTileRenderer;
+    TileMap groundMapTileMapComponent;
+
+    private void Start()
     {
-        GameObject tileMap = Utils.GenerateGameObject("GeneratedTileMap");
+        // grid object is the first child of the tilemap generator
+        grid = transform.GetChild(0).gameObject;
+        gridComponent = grid.GetComponent<Grid>();
+
+        // tilemap object is the first child of the grid
+        groundMap = grid.transform.GetChild(0).gameObject;
+        groundMapTileMapComponent = groundMap.GetComponent<TileMap>();
+        groundMapTileRenderer = groundMap.GetComponent<TilemapRenderer>();
+
+    }
+
+    private void Update()
+    {
+
+    }
+
+    public GameObject GenerateTile()
+    {
+        GameObject tileMap = Utils.GenerateGameObject("GeneratedTile");
         tileMap.AddComponent<TileMap>();
-        tileMap.transform.localScale = new Vector3(2, 2, 1);
         tileMap.tag = "GeneratedTileMap";
         return tileMap;
     }
